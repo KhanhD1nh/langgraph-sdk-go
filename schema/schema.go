@@ -12,6 +12,7 @@ type RunStatus string
 
 const (
 	RunStatusPending     RunStatus = "pending"     // The run is waiting to start
+	RunStatusRunning     RunStatus = "running"     // The run is currently executing
 	RunStatusError       RunStatus = "error"       // The run encountered an error and stopped
 	RunStatusSuccess     RunStatus = "success"     // The run completed successfully
 	RunStatusTimeout     RunStatus = "timeout"     // The run exceeded its time limit
@@ -144,12 +145,14 @@ type Subgraphs map[string]GraphSchema
 
 // AssistantBase is the base model for an assistant
 type AssistantBase struct {
-	AssistantID string    `json:"assistant_id"` // The ID of the assistant
-	GraphID     string    `json:"graph_id"`     // The ID of the graph
-	Config      Config    `json:"config"`       // The assistant config
-	CreatedAt   time.Time `json:"created_at"`   // The time the assistant was created
-	Metadata    Json      `json:"metadata"`     // The assistant metadata
-	Version     int       `json:"version"`      // The version of the assistant
+	AssistantID string    `json:"assistant_id"`          // The ID of the assistant
+	GraphID     string    `json:"graph_id"`              // The ID of the graph
+	Config      Config    `json:"config"`                // The assistant config
+	CreatedAt   time.Time `json:"created_at"`            // The time the assistant was created
+	Metadata    Json      `json:"metadata"`              // The assistant metadata
+	Version     int       `json:"version"`               // The version of the assistant
+	Name        string    `json:"name"`                  // The name of the assistant
+	Description *string   `json:"description,omitempty"` // The description of the assistant
 }
 
 // AssistantVersion represents a specific version of an assistant
@@ -161,7 +164,6 @@ type AssistantVersion struct {
 type Assistant struct {
 	AssistantBase
 	UpdatedAt time.Time `json:"updated_at"` // The last time the assistant was updated
-	Name      string    `json:"name"`       // The name of the assistant
 }
 
 // InterruptWhen defines when an interrupt occurred
@@ -325,3 +327,9 @@ const (
 	ThreadSortByCreatedAt ThreadSortBy = "created_at" // The time the thread was created
 	ThreadSortByUpdatedAt ThreadSortBy = "updated_at" // The last time the thread was updated
 )
+
+// RunCreateMetadata represents metadata for a run creation request
+type RunCreateMetadata struct {
+	RunID    string  `json:"run_id"`              // The ID of the run
+	ThreadID *string `json:"thread_id,omitempty"` // The ID of the thread
+}
