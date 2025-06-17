@@ -17,16 +17,17 @@ func NewCronsClient(httpClient *http.HttpClient) *CronsClient {
 	return &CronsClient{http: httpClient}
 }
 
-func (c *CronsClient) CreatForThread(ctx context.Context, threadID string, assistantID string, schedule string, input *map[string]any, metadata *map[string]any, config *schema.Config, interruptBefore *any, interruptAfter *any, webhook *string, multitaskStrategy *schema.MultitaskStrategy, headers *map[string]string) (schema.Run, error) {
+func (c *CronsClient) CreateForThread(ctx context.Context, threadID string, assistantID string, schedule string, input *map[string]any, metadata *map[string]any, config *schema.Config, checkpointDuring *bool, interruptBefore *any, interruptAfter *any, webhook *string, multitaskStrategy *schema.MultitaskStrategy, headers *map[string]string) (schema.Run, error) {
 	payload := map[string]any{
-		"schedule":         schedule,
-		"input":            input,
-		"config":           config,
-		"metadata":         metadata,
-		"assistant_id":     assistantID,
-		"interrupt_before": interruptBefore,
-		"interrupt_after":  interruptAfter,
-		"webhook":          webhook,
+		"schedule":          schedule,
+		"input":             input,
+		"config":            config,
+		"metadata":          metadata,
+		"assistant_id":      assistantID,
+		"checkpoint_during": checkpointDuring,
+		"interrupt_before":  interruptBefore,
+		"interrupt_after":   interruptAfter,
+		"webhook":           webhook,
 	}
 
 	if multitaskStrategy != nil {
@@ -38,13 +39,19 @@ func (c *CronsClient) CreatForThread(ctx context.Context, threadID string, assis
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, fmt.Sprintf("/threads/%s/crons", threadID), payload, headers)
+	result, err := c.http.Post(ctx, fmt.Sprintf("/threads/%s/runs/crons", threadID), payload, headers, nil)
+	if err != nil {
+		return schema.Run{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Run{}, err
 	}
 
 	var run schema.Run
-	err = json.Unmarshal(resp.Body(), &run)
+	err = json.Unmarshal(jsonBytes, &run)
 	if err != nil {
 		return schema.Run{}, err
 	}
@@ -52,16 +59,17 @@ func (c *CronsClient) CreatForThread(ctx context.Context, threadID string, assis
 	return run, nil
 }
 
-func (c *CronsClient) Creat(ctx context.Context, assistantID string, schedule string, input *map[string]any, metadata *map[string]any, config *schema.Config, interruptBefore *schema.All, interruptAfter *schema.All, webhook *string, multitaskStrategy *schema.MultitaskStrategy, headers *map[string]string) (schema.Run, error) {
+func (c *CronsClient) Create(ctx context.Context, assistantID string, schedule string, input *map[string]any, metadata *map[string]any, config *schema.Config, checkpointDuring *bool, interruptBefore *schema.All, interruptAfter *schema.All, webhook *string, multitaskStrategy *schema.MultitaskStrategy, headers *map[string]string) (schema.Run, error) {
 	payload := map[string]any{
-		"schedule":         schedule,
-		"input":            input,
-		"config":           config,
-		"metadata":         metadata,
-		"assistant_id":     assistantID,
-		"interrupt_before": interruptBefore,
-		"interrupt_after":  interruptAfter,
-		"webhook":          webhook,
+		"schedule":          schedule,
+		"input":             input,
+		"config":            config,
+		"metadata":          metadata,
+		"assistant_id":      assistantID,
+		"checkpoint_during": checkpointDuring,
+		"interrupt_before":  interruptBefore,
+		"interrupt_after":   interruptAfter,
+		"webhook":           webhook,
 	}
 
 	if multitaskStrategy != nil {
@@ -73,13 +81,19 @@ func (c *CronsClient) Creat(ctx context.Context, assistantID string, schedule st
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, "runs/crons", payload, headers)
+	result, err := c.http.Post(ctx, "/runs/crons", payload, headers, nil)
+	if err != nil {
+		return schema.Run{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Run{}, err
 	}
 
 	var run schema.Run
-	err = json.Unmarshal(resp.Body(), &run)
+	err = json.Unmarshal(jsonBytes, &run)
 	if err != nil {
 		return schema.Run{}, err
 	}
@@ -88,7 +102,7 @@ func (c *CronsClient) Creat(ctx context.Context, assistantID string, schedule st
 }
 
 func (c *CronsClient) Delete(ctx context.Context, cronID string, headers *map[string]string) error {
-	err := c.http.Delete(ctx, fmt.Sprintf("/crons/%s", cronID), nil, headers)
+	err := c.http.Delete(ctx, fmt.Sprintf("/runs/crons/%s", cronID), nil, headers, nil)
 	if err != nil {
 		return err
 	}
@@ -106,7 +120,7 @@ func (c *CronsClient) Search(ctx context.Context, assistantID *string, threadID 
 	}
 
 	payload := map[string]any{
-		"aasistant_id": assistantID,
+		"assistant_id": assistantID,
 		"thread_id":    threadID,
 		"limit":        limit,
 		"offset":       offset,
@@ -117,14 +131,19 @@ func (c *CronsClient) Search(ctx context.Context, assistantID *string, threadID 
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, "runs/crons/search", payload, headers)
+	result, err := c.http.Post(ctx, "/runs/crons/search", payload, headers, nil)
+	if err != nil {
+		return []schema.Cron{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return []schema.Cron{}, err
 	}
 
 	var crons []schema.Cron
-
-	err = json.Unmarshal(resp.Body(), &crons)
+	err = json.Unmarshal(jsonBytes, &crons)
 	if err != nil {
 		return []schema.Cron{}, err
 	}

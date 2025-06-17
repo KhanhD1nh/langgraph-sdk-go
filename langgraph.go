@@ -22,7 +22,7 @@ import (
 
 var (
 	RESERVED_HEADERS = []string{"x-api-key"}
-	Version          = "unknown"
+	Version          = "v1.0.5"
 )
 
 type LangGraphClient struct {

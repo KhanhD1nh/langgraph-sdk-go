@@ -11,7 +11,8 @@ func handleError(resp *resty.Response, err error) error {
 		return err
 	}
 	if resp.IsError() {
-		return fmt.Errorf("HTTP error: %d - %s", resp.StatusCode(), string(resp.Body()))
+		body := resp.String()
+		return fmt.Errorf("HTTP error: %d - %s", resp.StatusCode(), body)
 	}
 	return nil
 }

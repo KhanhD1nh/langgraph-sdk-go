@@ -15,6 +15,9 @@ import (
 	"github.com/tidwall/gjson"
 )
 
+// ResponseCallback is a function that will be called with the response
+type ResponseCallback func(*resty.Response)
+
 // HttpClient handles async requests to the LangGraph API.
 // Adds additional error messaging & content handling above the
 // provided resty client.
@@ -41,7 +44,7 @@ func (c *HttpClient) CheckConnection() error {
 }
 
 // Get sends a GET request.
-func (c *HttpClient) Get(ctx context.Context, path string, params url.Values, header *map[string]string) (*resty.Response, error) {
+func (c *HttpClient) Get(ctx context.Context, path string, params url.Values, header *map[string]string, onResponse ResponseCallback) (interface{}, error) {
 	req := c.client.R().SetContext(ctx)
 	if params != nil {
 		req.SetQueryParamsFromValues(params)
@@ -53,15 +56,20 @@ func (c *HttpClient) Get(ctx context.Context, path string, params url.Values, he
 		}
 	}
 	resp, err := req.Get(path)
+
+	if onResponse != nil {
+		onResponse(resp)
+	}
+
 	if err := handleError(resp, err); err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return decodeJSON(resp)
 }
 
 // Post sends a POST request.
-func (c *HttpClient) Post(ctx context.Context, path string, jsonData any, header *map[string]string) (*resty.Response, error) {
+func (c *HttpClient) Post(ctx context.Context, path string, jsonData any, header *map[string]string, onResponse ResponseCallback) (interface{}, error) {
 	req := c.client.R().SetContext(ctx)
 
 	if jsonData != nil {
@@ -76,15 +84,20 @@ func (c *HttpClient) Post(ctx context.Context, path string, jsonData any, header
 	}
 
 	resp, err := req.Post(path)
+
+	if onResponse != nil {
+		onResponse(resp)
+	}
+
 	if err := handleError(resp, err); err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return decodeJSON(resp)
 }
 
 // Put sends a PUT request.
-func (c *HttpClient) Put(ctx context.Context, path string, jsonData any, header *map[string]string) (*resty.Response, error) {
+func (c *HttpClient) Put(ctx context.Context, path string, jsonData any, header *map[string]string, onResponse ResponseCallback) (interface{}, error) {
 	req := c.client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
@@ -97,15 +110,20 @@ func (c *HttpClient) Put(ctx context.Context, path string, jsonData any, header 
 	}
 
 	resp, err := req.Put(path)
+
+	if onResponse != nil {
+		onResponse(resp)
+	}
+
 	if err := handleError(resp, err); err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return decodeJSON(resp)
 }
 
 // Patch sends a PATCH request.
-func (c *HttpClient) Patch(ctx context.Context, path string, jsonData any, header *map[string]string) (*resty.Response, error) {
+func (c *HttpClient) Patch(ctx context.Context, path string, jsonData any, header *map[string]string, onResponse ResponseCallback) (interface{}, error) {
 	req := c.client.R().
 		SetContext(ctx).
 		SetHeader("Content-Type", "application/json").
@@ -118,15 +136,20 @@ func (c *HttpClient) Patch(ctx context.Context, path string, jsonData any, heade
 	}
 
 	resp, err := req.Patch(path)
+
+	if onResponse != nil {
+		onResponse(resp)
+	}
+
 	if err := handleError(resp, err); err != nil {
 		return nil, err
 	}
 
-	return resp, nil
+	return decodeJSON(resp)
 }
 
 // Delete sends a DELETE request.
-func (c *HttpClient) Delete(ctx context.Context, path string, jsonData any, header *map[string]string) error {
+func (c *HttpClient) Delete(ctx context.Context, path string, jsonData any, header *map[string]string, onResponse ResponseCallback) error {
 	req := c.client.R().SetContext(ctx)
 
 	if jsonData != nil {
@@ -141,6 +164,11 @@ func (c *HttpClient) Delete(ctx context.Context, path string, jsonData any, head
 	}
 
 	resp, err := req.Delete(path)
+
+	if onResponse != nil {
+		onResponse(resp)
+	}
+
 	if err := handleError(resp, err); err != nil {
 		return err
 	}
@@ -149,7 +177,7 @@ func (c *HttpClient) Delete(ctx context.Context, path string, jsonData any, head
 }
 
 // Stream streams results using SSE.
-func (c *HttpClient) Stream(ctx context.Context, path string, method string, jsonData any, params url.Values, headers *map[string]string) (chan schema.StreamPart, chan error, error) {
+func (c *HttpClient) Stream(ctx context.Context, path string, method string, jsonData any, params url.Values, headers *map[string]string, onResponse ResponseCallback) (chan schema.StreamPart, chan error, error) {
 	req := c.client.R().
 		SetContext(ctx).
 		SetDoNotParseResponse(true). // Important for streaming
@@ -188,6 +216,10 @@ func (c *HttpClient) Stream(ctx context.Context, path string, method string, jso
 		resp, err = req.Delete(path)
 	default:
 		return nil, nil, fmt.Errorf("unsupported HTTP method: %s", method)
+	}
+
+	if onResponse != nil {
+		onResponse(resp)
 	}
 
 	if err != nil {

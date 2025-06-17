@@ -9,7 +9,6 @@ import (
 
 	"github.com/KhanhD1nh/langgraph-sdk-go/http"
 	"github.com/KhanhD1nh/langgraph-sdk-go/schema"
-	"github.com/go-resty/resty/v2"
 )
 
 type AssistantsClient struct {
@@ -21,12 +20,19 @@ func NewAssistantsClient(httpClient *http.HttpClient) *AssistantsClient {
 }
 
 func (c *AssistantsClient) Get(ctx context.Context, assistantID string, headers *map[string]string) (schema.Assistant, error) {
-	resp, err := c.http.Get(ctx, fmt.Sprintf("/assistants/%s", assistantID), nil, headers)
+	result, err := c.http.Get(ctx, fmt.Sprintf("/assistants/%s", assistantID), nil, headers, nil)
 	if err != nil {
 		return schema.Assistant{}, err
 	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return schema.Assistant{}, err
+	}
+
 	var assistant schema.Assistant
-	err = json.Unmarshal(resp.Body(), &assistant)
+	err = json.Unmarshal(jsonBytes, &assistant)
 	if err != nil {
 		return schema.Assistant{}, err
 	}
@@ -39,13 +45,19 @@ func (c *AssistantsClient) GetGraph(ctx context.Context, assistantID string, xra
 		params.Set("xray", fmt.Sprintf("%v", *xray))
 	}
 
-	resp, err := c.http.Get(ctx, fmt.Sprintf("/assistants/%s/graph", assistantID), params, headers)
+	result, err := c.http.Get(ctx, fmt.Sprintf("/assistants/%s/graph", assistantID), params, headers, nil)
+	if err != nil {
+		return schema.Graph{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Graph{}, err
 	}
 
 	var graph schema.Graph
-	err = json.Unmarshal(resp.Body(), &graph)
+	err = json.Unmarshal(jsonBytes, &graph)
 	if err != nil {
 		return schema.Graph{}, err
 	}
@@ -54,14 +66,19 @@ func (c *AssistantsClient) GetGraph(ctx context.Context, assistantID string, xra
 }
 
 func (c *AssistantsClient) GetSchemas(ctx context.Context, assistantID string, headers *map[string]string) (schema.GraphSchema, error) {
-	resp, err := c.http.Get(ctx, fmt.Sprintf("/assistants/%s/schemas", assistantID), nil, headers)
+	result, err := c.http.Get(ctx, fmt.Sprintf("/assistants/%s/schemas", assistantID), nil, headers, nil)
+	if err != nil {
+		return schema.GraphSchema{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.GraphSchema{}, err
 	}
 
 	var graphSchema schema.GraphSchema
-
-	err = json.Unmarshal(resp.Body(), &graphSchema)
+	err = json.Unmarshal(jsonBytes, &graphSchema)
 	if err != nil {
 		return schema.GraphSchema{}, err
 	}
@@ -70,28 +87,32 @@ func (c *AssistantsClient) GetSchemas(ctx context.Context, assistantID string, h
 }
 
 func (c *AssistantsClient) GetSubgraphs(ctx context.Context, assistantID string, namespace *string, recurse *bool, headers *map[string]string) (schema.Subgraphs, error) {
-	var (
-		resp *resty.Response
-		err  error
-	)
-
 	params := url.Values{}
 	params.Set("recurse", fmt.Sprintf("%v", *recurse))
 
+	var result interface{}
+	var err error
+
 	if namespace != nil {
-		resp, err = c.http.Get(ctx, fmt.Sprintf("/assistants/%s/subgraphs/%s", assistantID, *namespace), params, headers)
+		result, err = c.http.Get(ctx, fmt.Sprintf("/assistants/%s/subgraphs/%s", assistantID, *namespace), params, headers, nil)
 		if err != nil {
 			return schema.Subgraphs{}, err
 		}
 	} else {
-		resp, err = c.http.Get(ctx, fmt.Sprintf("/assistants/%s/subgraphs", assistantID), params, headers)
+		result, err = c.http.Get(ctx, fmt.Sprintf("/assistants/%s/subgraphs", assistantID), params, headers, nil)
 		if err != nil {
 			return schema.Subgraphs{}, err
 		}
 	}
 
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return schema.Subgraphs{}, err
+	}
+
 	var subgraphs schema.Subgraphs
-	err = json.Unmarshal(resp.Body(), &subgraphs)
+	err = json.Unmarshal(jsonBytes, &subgraphs)
 	if err != nil {
 		return schema.Subgraphs{}, err
 	}
@@ -127,13 +148,19 @@ func (c *AssistantsClient) Create(ctx context.Context, graphID *string, config *
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, "/assistants", payload, headers)
+	result, err := c.http.Post(ctx, "/assistants", payload, headers, nil)
+	if err != nil {
+		return schema.Assistant{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Assistant{}, err
 	}
 
 	var assistant schema.Assistant
-	err = json.Unmarshal(resp.Body(), &assistant)
+	err = json.Unmarshal(jsonBytes, &assistant)
 	if err != nil {
 		return schema.Assistant{}, err
 	}
@@ -164,13 +191,19 @@ func (c *AssistantsClient) Update(ctx context.Context, assistantID string, graph
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Patch(ctx, fmt.Sprintf("/assistants/%s", assistantID), payload, headers)
+	result, err := c.http.Patch(ctx, fmt.Sprintf("/assistants/%s", assistantID), payload, headers, nil)
+	if err != nil {
+		return schema.Assistant{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Assistant{}, err
 	}
 
 	var assistant schema.Assistant
-	err = json.Unmarshal(resp.Body(), &assistant)
+	err = json.Unmarshal(jsonBytes, &assistant)
 	if err != nil {
 		return schema.Assistant{}, err
 	}
@@ -179,7 +212,7 @@ func (c *AssistantsClient) Update(ctx context.Context, assistantID string, graph
 }
 
 func (c *AssistantsClient) Delete(ctx context.Context, assistantID string, headers *map[string]string) error {
-	err := c.http.Delete(ctx, fmt.Sprintf("/assistants/%s", assistantID), nil, headers)
+	err := c.http.Delete(ctx, fmt.Sprintf("/assistants/%s", assistantID), nil, headers, nil)
 	if err != nil {
 		return err
 	}
@@ -218,14 +251,19 @@ func (c *AssistantsClient) Search(ctx context.Context, metadata *schema.Json, gr
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, "/assistants/search", payload, headers)
+	result, err := c.http.Post(ctx, "/assistants/search", payload, headers, nil)
+	if err != nil {
+		return []schema.Assistant{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return []schema.Assistant{}, err
 	}
 
 	var assistants []schema.Assistant
-
-	err = json.Unmarshal(resp.Body(), &assistants)
+	err = json.Unmarshal(jsonBytes, &assistants)
 	if err != nil {
 		return []schema.Assistant{}, err
 	}
@@ -255,14 +293,19 @@ func (c *AssistantsClient) GetVersions(ctx context.Context, assistantID string, 
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, fmt.Sprintf("/assistants/%s/versions", assistantID), payload, headers)
+	result, err := c.http.Post(ctx, fmt.Sprintf("/assistants/%s/versions", assistantID), payload, headers, nil)
+	if err != nil {
+		return []schema.Assistant{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return []schema.Assistant{}, err
 	}
 
 	var assistants []schema.Assistant
-
-	err = json.Unmarshal(resp.Body(), &assistants)
+	err = json.Unmarshal(jsonBytes, &assistants)
 	if err != nil {
 		return []schema.Assistant{}, err
 	}
@@ -271,7 +314,6 @@ func (c *AssistantsClient) GetVersions(ctx context.Context, assistantID string, 
 }
 
 func (c *AssistantsClient) SetLatest(ctx context.Context, assistantID string, version *int, headers *map[string]string) (schema.Assistant, error) {
-
 	payload := map[string]any{
 		"version": *version,
 	}
@@ -281,14 +323,19 @@ func (c *AssistantsClient) SetLatest(ctx context.Context, assistantID string, ve
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, fmt.Sprintf("/assistants/%s/versions/latest", assistantID), payload, headers)
+	result, err := c.http.Post(ctx, fmt.Sprintf("/assistants/%s/versions/latest", assistantID), payload, headers, nil)
+	if err != nil {
+		return schema.Assistant{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Assistant{}, err
 	}
 
 	var assistant schema.Assistant
-
-	err = json.Unmarshal(resp.Body(), &assistant)
+	err = json.Unmarshal(jsonBytes, &assistant)
 	if err != nil {
 		return schema.Assistant{}, err
 	}

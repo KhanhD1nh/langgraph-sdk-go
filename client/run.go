@@ -64,7 +64,7 @@ func (c *RunsClient) Stream(ctx context.Context, threadID string, assistantID st
 
 	ctx, cancel := context.WithCancel(ctx)
 
-	streamCh, errCh, err := c.http.Stream(ctx, endPoint, "POST", payload, nil, headers)
+	streamCh, errCh, err := c.http.Stream(ctx, endPoint, "POST", payload, nil, headers, nil)
 	if err != nil {
 		cancel()
 		errCh <- err
@@ -107,13 +107,19 @@ func (c *RunsClient) Create(ctx context.Context, threadID string, assistantID st
 		endPoint = "/runs"
 	}
 
-	resp, err := c.http.Post(ctx, endPoint, payload, headers)
+	result, err := c.http.Post(ctx, endPoint, payload, headers, nil)
+	if err != nil {
+		return schema.Run{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Run{}, err
 	}
 
 	var run schema.Run
-	err = json.Unmarshal(resp.Body(), &run)
+	err = json.Unmarshal(jsonBytes, &run)
 	if err != nil {
 		return schema.Run{}, err
 	}
@@ -139,13 +145,19 @@ func (c *RunsClient) CreateBatch(ctx context.Context, payloads []map[string]any)
 
 	jsonData := map[string]any{"batch": filteredPayloads}
 
-	resp, err := c.http.Post(ctx, "/runs/batch", jsonData, nil)
+	result, err := c.http.Post(ctx, "/runs/batch", jsonData, nil, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return nil, err
 	}
 
 	var runs []schema.Run
-	err = json.Unmarshal(resp.Body(), &runs)
+	err = json.Unmarshal(jsonBytes, &runs)
 	if err != nil {
 		return nil, err
 	}
@@ -186,23 +198,29 @@ func (c *RunsClient) Wait(ctx context.Context, threadID string, assistantID stri
 		endPoint = "/runs/wait"
 	}
 
-	resp, err := c.http.Post(ctx, endPoint, payload, headers)
+	result, err := c.http.Post(ctx, endPoint, payload, headers, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var result map[string]any
-	if err = json.Unmarshal(resp.Body(), &result); err != nil {
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+
+	var responseData map[string]any
+	if err = json.Unmarshal(jsonBytes, &responseData); err != nil {
 		return nil, err
 	}
 
 	if *raiseError {
-		if errData, exists := result["__error__"].(map[string]any); exists {
+		if errData, exists := responseData["__error__"].(map[string]any); exists {
 			return nil, fmt.Errorf("%s", errData["message"])
 		}
 	}
 
-	return result, nil
+	return responseData, nil
 }
 
 func (c *RunsClient) List(ctx context.Context, threadID string, limit *int, offset *int, status *schema.RunStatus, headers *map[string]string) ([]schema.Run, error) {
@@ -218,13 +236,19 @@ func (c *RunsClient) List(ctx context.Context, threadID string, limit *int, offs
 		params.Add("status", string(*status))
 	}
 
-	resp, err := c.http.Get(ctx, fmt.Sprintf("/threads/%s/runs", threadID), params, headers)
+	result, err := c.http.Get(ctx, fmt.Sprintf("/threads/%s/runs", threadID), params, headers, nil)
+	if err != nil {
+		return []schema.Run{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return []schema.Run{}, err
 	}
 
 	var runs []schema.Run
-	err = json.Unmarshal(resp.Body(), &runs)
+	err = json.Unmarshal(jsonBytes, &runs)
 	if err != nil {
 		return []schema.Run{}, err
 	}
@@ -233,13 +257,19 @@ func (c *RunsClient) List(ctx context.Context, threadID string, limit *int, offs
 }
 
 func (c *RunsClient) Get(ctx context.Context, threadID string, runID string, headers *map[string]string) (schema.Run, error) {
-	resp, err := c.http.Get(ctx, fmt.Sprintf("/threads/%s/runs/%s", threadID, runID), nil, headers)
+	result, err := c.http.Get(ctx, fmt.Sprintf("/threads/%s/runs/%s", threadID, runID), nil, headers, nil)
+	if err != nil {
+		return schema.Run{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.Run{}, err
 	}
 
 	var run schema.Run
-	err = json.Unmarshal(resp.Body(), &run)
+	err = json.Unmarshal(jsonBytes, &run)
 	if err != nil {
 		return schema.Run{}, err
 	}
@@ -262,7 +292,7 @@ func (c *RunsClient) Cancel(ctx context.Context, threadID string, runID string, 
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	_, err := c.http.Post(ctx, fmt.Sprintf("/threads/%s/runs/%s/cancel", threadID, runID), payload, headers)
+	_, err := c.http.Post(ctx, fmt.Sprintf("/threads/%s/runs/%s/cancel", threadID, runID), payload, headers, nil)
 	if err != nil {
 		return err
 	}
@@ -271,18 +301,24 @@ func (c *RunsClient) Cancel(ctx context.Context, threadID string, runID string, 
 }
 
 func (c *RunsClient) Join(ctx context.Context, threadID string, runID string, headers *map[string]string) (map[string]any, error) {
-	resp, err := c.http.Get(ctx, fmt.Sprintf("/threads/%s/runs/%s/join", threadID, runID), nil, headers)
+	result, err := c.http.Get(ctx, fmt.Sprintf("/threads/%s/runs/%s/join", threadID, runID), nil, headers, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	var result map[string]any
-	err = json.Unmarshal(resp.Body(), &result)
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return nil, err
 	}
 
-	return result, nil
+	var responseData map[string]any
+	err = json.Unmarshal(jsonBytes, &responseData)
+	if err != nil {
+		return nil, err
+	}
+
+	return responseData, nil
 }
 
 func (c *RunsClient) JoinStream(ctx context.Context, threadID string, runID string, cancelOnDisconnect *bool, streamMode *[]schema.StreamMode, headers *map[string]string) (chan schema.StreamPart, context.CancelFunc) {
@@ -300,7 +336,7 @@ func (c *RunsClient) JoinStream(ctx context.Context, threadID string, runID stri
 		params.Add("stream_mode", fmt.Sprintf("%s", *streamMode))
 	}
 
-	streamCh, errCh, err := c.http.Stream(ctx, fmt.Sprintf("/threads/%s/runs/%s/join/stream", threadID, runID), "GET", nil, params, headers)
+	streamCh, errCh, err := c.http.Stream(ctx, fmt.Sprintf("/threads/%s/runs/%s/join/stream", threadID, runID), "GET", nil, params, headers, nil)
 	if err != nil {
 		cancel()
 		errCh <- err
@@ -324,7 +360,7 @@ func (c *RunsClient) JoinStream(ctx context.Context, threadID string, runID stri
 }
 
 func (c *RunsClient) Delete(ctx context.Context, threadID string, runID string, headers *map[string]string) error {
-	err := c.http.Delete(ctx, fmt.Sprintf("/threads/%s/runs/%s", threadID, runID), nil, headers)
+	err := c.http.Delete(ctx, fmt.Sprintf("/threads/%s/runs/%s", threadID, runID), nil, headers, nil)
 	if err != nil {
 		return err
 	}

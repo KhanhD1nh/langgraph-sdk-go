@@ -40,7 +40,7 @@ func (c *StoreClient) PutItem(ctx context.Context, namespace []string, key strin
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	_, err := c.http.Put(ctx, "/store/items", payload, headers)
+	_, err := c.http.Put(ctx, "/store/items", payload, headers, nil)
 	return err
 }
 
@@ -59,13 +59,19 @@ func (c *StoreClient) GetItem(ctx context.Context, namespace []string, key strin
 		params.Add("refresh_ttl", fmt.Sprintf("%t", *refreshTtl))
 	}
 
-	resp, err := c.http.Get(ctx, "/store/items", params, headers)
+	result, err := c.http.Get(ctx, "/store/items", params, headers, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return nil, err
 	}
 
 	var item map[string]any
-	err = json.Unmarshal(resp.Body(), &item)
+	err = json.Unmarshal(jsonBytes, &item)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +91,7 @@ func (c *StoreClient) DeleteItem(ctx context.Context, namespace []string, key st
 		"key":       key,
 	}
 
-	err := c.http.Delete(ctx, "/store/items", jsonData, headers)
+	err := c.http.Delete(ctx, "/store/items", jsonData, headers, nil)
 	if err != nil {
 		return err
 	}
@@ -93,7 +99,7 @@ func (c *StoreClient) DeleteItem(ctx context.Context, namespace []string, key st
 	return nil
 }
 
-func (c *StoreClient) SearchItems(namespace []string, filter *map[string]any, limit *int, offset *int, query *string, refreshTtl *bool, headers *map[string]string) (schema.SearchItemsResponse, error) {
+func (c *StoreClient) SearchItems(ctx context.Context, namespacePrefix []string, filter *map[string]any, limit *int, offset *int, query *string, refreshTtl *bool, headers *map[string]string) (schema.SearchItemsResponse, error) {
 	if limit != nil && *limit <= 0 {
 		*limit = 10
 	}
@@ -103,12 +109,12 @@ func (c *StoreClient) SearchItems(namespace []string, filter *map[string]any, li
 	}
 
 	payload := map[string]any{
-		"namespace":   namespace,
-		"filter":      filter,
-		"limit":       limit,
-		"offset":      offset,
-		"query":       query,
-		"refresh_ttl": refreshTtl,
+		"namespace_prefix": namespacePrefix,
+		"filter":           filter,
+		"limit":            limit,
+		"offset":           offset,
+		"query":            query,
+		"refresh_ttl":      refreshTtl,
 	}
 
 	payload, ok := removeEmptyFields(payload).(map[string]any)
@@ -116,15 +122,19 @@ func (c *StoreClient) SearchItems(namespace []string, filter *map[string]any, li
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	ctx := context.Background()
-	resp, err := c.http.Post(ctx, "/store/items/search", payload, headers)
+	result, err := c.http.Post(ctx, "/store/items/search", payload, headers, nil)
+	if err != nil {
+		return schema.SearchItemsResponse{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return schema.SearchItemsResponse{}, err
 	}
 
 	var searchItemsResponse schema.SearchItemsResponse
-
-	err = json.Unmarshal(resp.Body(), &searchItemsResponse)
+	err = json.Unmarshal(jsonBytes, &searchItemsResponse)
 	if err != nil {
 		return schema.SearchItemsResponse{}, err
 	}
@@ -134,7 +144,7 @@ func (c *StoreClient) SearchItems(namespace []string, filter *map[string]any, li
 
 func (c *StoreClient) ListNamespaces(ctx context.Context, prefix *[]string, suffix *[]string, maxDepth *int, limit *int, offset *int, headers *map[string]string) ([]schema.ListNamespaceResponse, error) {
 	if limit != nil && *limit <= 0 {
-		*limit = 10
+		*limit = 100
 	}
 
 	if offset != nil && *offset < 0 {
@@ -154,13 +164,19 @@ func (c *StoreClient) ListNamespaces(ctx context.Context, prefix *[]string, suff
 		fmt.Println("Error: cleanedPayload is not a map[string]any")
 	}
 
-	resp, err := c.http.Post(ctx, "/store/namespaces", payload, headers)
+	result, err := c.http.Post(ctx, "/store/namespaces", payload, headers, nil)
+	if err != nil {
+		return []schema.ListNamespaceResponse{}, err
+	}
+
+	// Convert result to JSON bytes
+	jsonBytes, err := json.Marshal(result)
 	if err != nil {
 		return []schema.ListNamespaceResponse{}, err
 	}
 
 	var namespaces []schema.ListNamespaceResponse
-	err = json.Unmarshal(resp.Body(), &namespaces)
+	err = json.Unmarshal(jsonBytes, &namespaces)
 	if err != nil {
 		return []schema.ListNamespaceResponse{}, err
 	}
